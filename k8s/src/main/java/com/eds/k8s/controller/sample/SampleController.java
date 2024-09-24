@@ -147,4 +147,10 @@ public class SampleController {
 		return mav;
 	}
 	
+	@GetMapping(path = "/dashboard")
+	public String getDashboard() {
+		// This returns a JSON or XML with the users
+		return "samples/dashboard";
+	}
+	
 }

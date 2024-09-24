@@ -1399,6 +1399,12 @@ pre code {
     flex: 0 0 100%;
     max-width: 100%;
   }
+  
+  .col-xl-13 {
+    flex: 0 0 25%;
+    max-width: 100%;
+  }
+  
   .order-xl-first {
     order: -1;
   }
@@ -7604,6 +7610,14 @@ button.bg-dark:focus {
 
 .w-100 {
   width: 100% !important;
+}
+
+.w-450 {
+  width: 450px !important;
+}
+
+.w-550 {
+  width: 550px !important;
 }
 
 .w-auto {
