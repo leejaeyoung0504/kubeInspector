@@ -124,6 +124,8 @@
                         <a class="collapse-item" href="/samples/install-start">Install, Start and Test Page</a>
                         <a class="collapse-item" href="/samples/summary">Summary Page</a>
                         <a class="collapse-item" href="/samples/dashboard">DashBoard Page</a>
+                        <a class="collapse-item" href="/samples/overview">OverView Page</a>
+                        <a class="collapse-item" href="/samples/overviewtable">OverViewtable Page</a>
                     </div>
                 </div>
             </li>

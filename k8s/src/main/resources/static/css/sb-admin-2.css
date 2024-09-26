@@ -7612,6 +7612,10 @@ button.bg-dark:focus {
   width: 100% !important;
 }
 
+.w-350 {
+  width: 350px !important;
+}
+
 .w-450 {
   width: 450px !important;
 }
@@ -7622,6 +7626,10 @@ button.bg-dark:focus {
 
 .w-auto {
   width: auto !important;
+}
+
+.w-15r {
+	width: 1.5rem !important;
 }
 
 .h-25 {
@@ -7642,6 +7650,10 @@ button.bg-dark:focus {
 
 .h-auto {
   height: auto !important;
+}
+
+.h-15r {
+	height: 1.5rem !important;
 }
 
 .mw-100 {
@@ -11358,4 +11370,52 @@ footer.sticky-footer .copyright {
 
 body.sidebar-toggled footer.sticky-footer {
   width: 100%;
+}
+
+
+/* Tooltip container */
+.mytooltip {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+/* Tooltip text */
+.mytooltip-content {
+  visibility: hidden;
+  background-color: rgb(255, 255, 255);
+  color: #858796;
+  text-align: left;
+  border-radius: 4px;
+  padding: 15px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px solid #dddfeb;
+  font-size: 14px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  min-width: 150px;
+}
+
+/* Tooltip arrow */
+.mytooltip-content::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #dddfeb transparent transparent transparent;
+}
+
+/* Show the tooltip text when hovering */
+.mytooltip:hover .mytooltip-content {
+  visibility: visible;
+  opacity: 1;
 }
