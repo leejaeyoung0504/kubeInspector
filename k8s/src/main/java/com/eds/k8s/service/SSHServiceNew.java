@@ -26,6 +26,8 @@ import org.apache.sshd.common.util.io.resource.PathResource;
 import org.apache.sshd.common.util.security.SecurityUtils;
 import org.springframework.stereotype.Service;
 
+import com.eds.k8s.model.Server;
+
 @Service
 public class SSHServiceNew {
 
@@ -123,6 +125,19 @@ public class SSHServiceNew {
 			}
 		}
 		return false;
+	}
+
+	public boolean confiemHost(Server server, String sshKey) {
+
+		ClientSession session = getSession(server.getIpAddress(), server.getSshPort(), server.getSshUser(), sshKey);
+		if (session != null && session.isOpen()) {
+			// System.out.println("SSH 연결 성공: " + ipAddress);
+			return true;
+		} else {
+			System.err.println("SSH 연결 실패");
+			return false;
+		}
+
 	}
 
 	// Containerd 설치

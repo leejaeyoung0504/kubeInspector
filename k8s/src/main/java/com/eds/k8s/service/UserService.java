@@ -24,14 +24,20 @@ public class UserService {
 		User user = new User(email, encodedPassword, role, userId);
 		userRepository.save(user);
 	}
-	
+
 	// 이메일을 통해 사용자 ID를 가져오는 메서드
-    public Long getUserIdFromEmail(String email) {
-        Optional<User> userOptional = userRepository.findByEmail(email);
-        if (userOptional.isPresent()) {
-            return userOptional.get().getId(); // 사용자 ID 반환
-        } else {
-            throw new UsernameNotFoundException("User not found with email: " + email);
-        }
+	public Long getUserIdFromEmail(String email) {
+		Optional<User> userOptional = userRepository.findByEmail(email);
+		if (userOptional.isPresent()) {
+			return userOptional.get().getId(); // 사용자 ID 반환
+		} else {
+			throw new UsernameNotFoundException("User not found with email: " + email);
+		}
+	}
+
+	// 현재 로그인한 사용자 정보
+	public User findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
     }
 }

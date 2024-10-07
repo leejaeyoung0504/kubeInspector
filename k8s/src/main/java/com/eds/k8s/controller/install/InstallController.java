@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -39,7 +40,10 @@ import com.eds.k8s.repository.ServerRoleRepository;
 import com.eds.k8s.repository.UserRepository;
 import com.eds.k8s.service.FileControlService;
 import com.eds.k8s.service.InstallFileService;
+import com.eds.k8s.service.InstallationStatusService;
 import com.eds.k8s.service.SSHServiceNew;
+import com.eds.k8s.service.ServerService;
+import com.eds.k8s.service.UserService;
 
 @Controller
 @RequestMapping(path = "/install")
@@ -78,6 +82,15 @@ public class InstallController {
 		this.sshService = sshService;
 	}
 
+	@Autowired
+	private UserService userService;
+
+	@Autowired
+	private InstallationStatusService installationStatusService;
+
+	@Autowired
+	private ServerService serverService;
+
 	String joinCommand;
 
 	@PostMapping(path = "/getStarted")
@@ -85,77 +98,35 @@ public class InstallController {
 			Model model, Authentication authentication // 현재 로그인한 사용자 정보 가져오기
 	) {
 
-		// 현재 로그인한 사용자의 이메일 가져오기
-		String email = authentication.getName();
-		System.out.println("Authenticating user: " + email);
+		User user = userService.findUserByEmail(authentication.getName());
 
-		// 사용자 정보를 UserRepository에서 가져옴
-		Optional<User> userOptional = userRepository.findByEmail(email);
-		if (userOptional.isEmpty()) {
-			return "redirect:/login"; // 사용자가 없으면 로그인 페이지로 리다이렉트
-		}
-
-		User user = userOptional.get();
-		System.out.println("User found: " + user.getEmail() + ", User ID: " + user.getUserId());
-
-		// 사용자의 installation_status 정보 가져오기
-		Optional<InstallationStatus> statusOptional = installationStatusRepository.findByUser(user);
-		if (statusOptional.isEmpty()) {
-			return "redirect:/installation/start"; // 설치 상태가 없으면 설치 시작 페이지로 리다이렉트
-		}
-
-		InstallationStatus installationStatus = statusOptional.get();
-
-		// cluster_name과 step_id 업데이트
+		InstallationStatus installationStatus = installationStatusService.findByUser(user);
 		installationStatus.setClusterName(clusterName);
-		installationStatus.setStepId(stepId + 1);
+		installationStatusService.updateStepId(installationStatus, stepId + 1);
 
-		// DB 업데이트
-		installationStatusRepository.save(installationStatus);
-		// 모델에 값을 추가하여 JSP 페이지로 전달
 		model.addAttribute("clusterName", clusterName);
 		model.addAttribute("stepId", stepId);
 
-		// 예시: 설치 과정의 다음 단계로 리디렉트
 		return "redirect:/main";
 	}
 
 	@PostMapping(path = "/installOptionsBack")
 	public String installOptionBack(@RequestParam("stepId") int stepId, @RequestParam("actionType") String actionType,
 			Model model, Authentication authentication) {
-		// 현재 로그인한 사용자의 이메일 가져오기
-		String email = authentication.getName();
 
-		// 사용자 정보를 UserRepository에서 가져옴
-		Optional<User> userOptional = userRepository.findByEmail(email);
-		if (userOptional.isEmpty()) {
-			return "redirect:/login"; // 사용자가 없으면 로그인 페이지로 리다이렉트
-		}
+		User user = userService.findUserByEmail(authentication.getName());
 
-		User user = userOptional.get();
+		InstallationStatus installationStatus = installationStatusService.findByUser(user);
+		installationStatusService.updateStepId(installationStatus, stepId - 1);
 
-		// 사용자의 installation_status 정보 가져오기
-		Optional<InstallationStatus> statusOptional = installationStatusRepository.findByUser(user);
-		if (statusOptional.isEmpty()) {
-			return "redirect:/installation/start"; // 설치 상태가 없으면 설치 시작 페이지로 리다이렉트
-		}
-
-		InstallationStatus installationStatus = statusOptional.get();
-
-		installationStatus.setStepId(stepId - 1);
-
-		// DB 업데이트
-		installationStatusRepository.save(installationStatus);
 		if (actionType.equals("confiemHosts")) {
 			installLogRepository.deleteAll();
 			installProgressRepository.deleteAll();
 			installFilesRepository.deleteAll();
 		}
 
-		// 모델에 값을 추가하여 JSP 페이지로 전달
 		model.addAttribute("stepId", stepId);
 
-		// 예시: 설치 과정의 다음 단계로 리디렉트
 		return "redirect:/main";
 	}
 
@@ -166,64 +137,16 @@ public class InstallController {
 			@RequestParam("sshUser") String sshUser, @RequestParam("nasDirectory") String nasDirectory, Model model,
 			Authentication authentication) {
 
-		// 현재 로그인한 사용자의 이메일로 user_id 찾기
-		String email = authentication.getName();
-		User user = userRepository.findByEmail(email)
-				.orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
+		User user = userService.findUserByEmail(authentication.getName());
 
 		try {
-			// SSH 키 암호화
-			String secretKey = "1234567890123456"; // 16바이트 길이의 비밀키 (AES 128비트)
-			System.out.println("암호화 전 SSH 키: " + sshKey);
-			String encryptedSshKey = AESUtil.encrypt(sshKey, secretKey);
-			System.out.println("암호화 후 SSH 키: " + encryptedSshKey);
 
-			// 서버 정보를 처리 및 DB에 저장
-			String[] hostnameEntries = hostnames.split("\n");
+			String encryptedSshKey = AESUtil.encrypt(sshKey, "1234567890123456");
 
-			serverRepository.deleteAll();
-			for (String entry : hostnameEntries) {
-				String[] parts = entry.split(":");
-				String hostname = parts[0].trim();
-				String ipAddress = parts[1].trim();
+			serverService.saveServers(user, hostnames, encryptedSshKey, sshPort, sshUser, nasDirectory);
 
-				Optional<Server> existingServer = serverRepository.findByUserIdAndHostname(user.getUserId(), hostname);
-
-				Server server;
-
-				if (existingServer.isPresent()) {
-					// 이미 존재하면 업데이트
-					server = existingServer.get();
-					server.setHostname(hostname);
-					server.setSshPort(sshPort);
-					server.setSshUser(sshUser);
-					server.setSshKey(encryptedSshKey);
-					server.setNasDirectory(nasDirectory);
-					server.setIpAddress(ipAddress);
-					server.setStatus(Server.Status.PENDING); // 상태를 PENDING으로 설정
-				} else {
-					// 새로운 서버라면 삽입
-					server = new Server();
-					server.setUser(user);
-					server.setHostname(hostname);
-					server.setIpAddress(ipAddress);
-					server.setSshPort(sshPort);
-					server.setSshUser(sshUser);
-					server.setSshKey(encryptedSshKey);
-					server.setNasDirectory(nasDirectory);
-					server.setStatus(Server.Status.PENDING); // 상태를 PENDING으로 설정
-				}
-
-				// 서버 저장
-
-				serverRepository.save(server);
-			}
-
-			// installation_status 테이블의 step_id 업데이트
-			System.out.print("jytest >> +user.getUserId() >>" + user.getId().intValue());
-			InstallationStatus status = installationStatusRepository.findByUserId(user.getId().intValue())
-					.orElseThrow(() -> new IllegalArgumentException("설치 상태 정보를 찾을 수 없습니다."));
-			status.setStepId(stepId + 1); // step_id 업데이트
+			InstallationStatus status = installationStatusService.findByUser(user);
+			installationStatusService.updateStepId(status, stepId + 1);
 			installationStatusRepository.save(status);
 
 		} catch (Exception e) {
@@ -239,20 +162,16 @@ public class InstallController {
 	public ModelAndView installProgress(@RequestParam("serverId") List<Integer> serverIds, Model model)
 			throws Exception {
 
-		// 복호화
-		String secretKey = "1234567890123456";
-
 		for (Integer serverId : serverIds) {
-			Server server = serverRepository.findById(serverId)
-					.orElseThrow(() -> new IllegalArgumentException("서버를 찾을 수 없습니다."));
+			Server server = serverService.findServierByServerId(serverId);
 
 			// Install Progress 시작 (0%)
 			updateProgress(server, 0, "설치 시작: SSH 통신 준비", InstallProgress.Status.IN_PROGRESS, 1);
 
 			try {
 				String encryptedSshKey = server.getSshKey();
-				String decrypedSshKey = AESUtil.decrypt(encryptedSshKey, secretKey);
-				System.out.println("복호화된 SSH 키: " + decrypedSshKey);
+				String decrypedSshKey = AESUtil.decrypt(encryptedSshKey, "1234567890123456");
+
 				// SSH 연결 시도
 				boolean sshConnected = sshService.connect(server.getIpAddress(), server.getSshPort(),
 						server.getSshUser(), decrypedSshKey);
